@@ -77,9 +77,6 @@ const urlShortener = async function (req, res) {
 const getUrl = async function (req, res) {
     try {
         const urlCode = req.params.urlCode
-        if (!isValidRequest(urlCode)) {
-            return res.status(400).send({ status: false, message: "data is required" });
-        }
         const url = await UrlModel.findOne({ urlCode: req.params.urlCode })
         if (url) {
             return res.status(302).redirect(url.longUrl)
