@@ -62,4 +62,29 @@ const urlShortener = async function(req, res) {
 
    
 }
-module.exports = { urlShortener}
+
+//============================================================//
+
+const getUrl = async function(req, res) {
+    try {
+    
+        const urlCode = req.params.urlCode;
+
+        if (!/^(?=.*[a-zA-Z].*)[a-zA-Z\d!@#-_$%&*]{8,}$/.test(urlCode)) {
+            return res.status(400).send({ status: false, message: " enter a valid urlCode" });
+        }
+            const urlDataByUrlCode = await UrlModel.findOne({ urlCode });
+
+            if (!urlDataByUrlCode) {
+                return res.status(404).send({ status: false, message: "no such url exist" });
+            }else{
+
+            return res.status(302).redirect(urlDataByUrlCode.longUrl);
+        }
+    }
+         catch (err) {
+        res.status(500).send({ error: err.message });
+    }
+}
+
+module.exports = { urlShortener, getUrl}
