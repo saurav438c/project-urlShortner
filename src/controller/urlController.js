@@ -2,6 +2,7 @@
 const UrlModel = require("../model/urlModel")
 const ShortId = require("shortid");
 const validURL = require('valid-url')
+const redis = require("redis");
 
 
 //====================================================================//
@@ -18,7 +19,8 @@ const isValidRequest = function (object) {
 //  using regex for validating url
 const isValidUrl = function (value) {
     let regexForUrl =
-        /(:?^((https|http|HTTP|HTTPS){1}:\/\/)(([w]{3})[\.]{1})?([a-zA-Z0-9]{1,}[\.])[\w]*((\/){1}([\w@? ^=%&amp;~+#-_.]+))*)$/;
+       // /(:?^((https|http|HTTP|HTTPS){1}:\/\/)(([w]{3})[\.]{1})?([a-zA-Z0-9]{1,}[\.])[\w]*((\/){1}([\w@? ^=%&amp;~+#-_.]+))*)$/;//
+       /(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/gi;
     return regexForUrl.test(value);
 };
 //=================================================================================//
