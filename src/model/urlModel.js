@@ -1,7 +1,10 @@
+//================================= Importing ======================================================//
+
 const mongoose = require('mongoose')
 
-const urlSchema = new mongoose.Schema({
+//================================= Creating a Schema ==============================================//
 
+const urlSchema = new mongoose.Schema({
     urlCode: {
         type: String,
         required: true,
@@ -20,6 +23,10 @@ const urlSchema = new mongoose.Schema({
         unique: true,
         required: true
     }
-})
+},{timestamp: false})
+
+//==================================== Exporting ==================================================//
 
 module.exports = mongoose.model("URL", urlSchema)
+
+//==================================== xxxxxxxxxx ==================================================//
