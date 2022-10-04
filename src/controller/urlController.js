@@ -3,6 +3,7 @@ const UrlModel = require("../model/urlModel")
 const ShortId = require("shortid");
 const validURL = require('valid-url')
 const redis = require("redis");
+const { promisify } = require("util");
 
 
 //====================================================================//
@@ -23,6 +24,23 @@ const isValidUrl = function (value) {
        /(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/gi;
     return regexForUrl.test(value);
 };
+
+//======================================================//
+const redisClient = redis.createClient(
+    17402,
+    "redis-17402.c264.ap-south-1-1.ec2.cloud.redislabs.com",
+    { no_ready_check: true }
+  );
+  redisClient.auth("vfATbajz7cj12eIPQ2cggzGnzfjxX24S", function (err) {
+    if (err) throw err;
+  });
+  
+  redisClient.on("connect", async function () {
+    console.log("Connected to Redis..");
+  });
+const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
+const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
+
 //=================================================================================//
 const urlShortener = async function (req, res) {
     try {
@@ -80,16 +98,33 @@ const getUrl = async function (req, res) {
     try {
         const urlCode = req.params.urlCode
         const url = await UrlModel.findOne({ urlCode: req.params.urlCode })
-        if (url) {
-            return res.status(302).redirect(url.longUrl)
-        } else {
-            return res.status(400).send({ status: false, message: "No documnet found with this urlCode" });
-        }
-    } catch (err) {
-        return res.status(500).send({ status: false, message: err.message })
-    }
-}
+        const urlDataFromCache = await GET_ASYNC(urlCode);
 
+        if (urlDataFromCache) {
+
+            return res.status(302).redirect(urlDataFromCache);
+
+        } else {
+            
+            if (!url) {
+          return res.status(404).send({ status: false, message: "no such url exist" });
+            }
+
+            const addingUrlDataInCache = SET_ASYNC(
+                urlCode,
+                url.longUrl
+            );
+
+            // if we found the document by urlCode then redirecting the user to original url
+            return res.status(302).redirect(url.longUrl);
+        }
+    }
+        
+     catch (err) {
+        return res.status(500).send({ status: false, message: err.message })
+    
+}
+    }
 
 
 module.exports = { urlShortener, getUrl }
