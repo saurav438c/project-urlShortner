@@ -19,12 +19,6 @@ const isValidRequest = function (object) {
     return Object.keys(object).length > 0;
 };
 
-const isValidUrl = function (value) {
-    let regexForUrl =
-       // /(:?^((https|http|HTTP|HTTPS){1}:\/\/)(([w]{3})[\.]{1})?([a-zA-Z0-9]{1,}[\.])[\w]*((\/){1}([\w@? ^=%&amp;~+#-_.]+))*)$/;//
-       /(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/gi;
-    return regexForUrl.test(value);
-};
 
 // ================================== Connecting to Redis ===============================================//
 
@@ -70,16 +64,12 @@ const urlShortener = async function (req, res) {
             return res.status(400).send({ status: false, message: "Enter a valid URL 1" })
         }
 
-        if (!isValidUrl(longUrl.trim())) {
-            return res.status(400).send({ status: false, message: "Enter a valid URL" });
-        }
-
         let cachedURLCode = await GET_ASYNC(`${longUrl}`)
         if (cachedURLCode) {
             return res.status(201).send({ status: true, message: "Already URL shorten(GET)", data: JSON.parse(cachedURLCode)})
         }
 
-        let URLDOC = await UrlModel.findOne({ longUrl: longUrl.trim().toLowerCase() }).select({ _id: 0, __v: 0 })
+        let URLDOC = await UrlModel.findOne({ longUrl: longUrl.trim()}).select({ _id: 0, __v: 0 })
         if (URLDOC) {
             await SET_ASYNC(`${longUrl}`,JSON.stringify(URLDOC),"EX",10)
             return res.status(201).send({ status: true, message: "ALready URL shorten(SET)", data: URLDOC })
@@ -90,12 +80,8 @@ const urlShortener = async function (req, res) {
             url: longUrl
         }
 
-        let urlFound = false;
-        await axios(obj)
-            .then((res) => {
-                if (res.status == 201 || res.status == 200) urlFound = true;
-            })
-            .catch((err) => { });
+        let urlFound;
+        await axios(obj).then(()=>urlFound=true).catch(() => { urlFound = false });
         if (!urlFound) {
             return res.status(400).send({ status: false, message: "Please provide valid LongUrl(RDOP)" })
         }
