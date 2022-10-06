@@ -3,6 +3,7 @@
 const UrlModel = require("../model/urlModel")
 const ShortId = require("shortid");
 const validURL = require("valid-url")
+const axios = require("axios")
 const redis = require("redis")
 const { promisify } = require("util")
 
@@ -80,8 +81,23 @@ const urlShortener = async function (req, res) {
 
         let URLDOC = await UrlModel.findOne({ longUrl: longUrl.trim().toLowerCase() }).select({ _id: 0, __v: 0 })
         if (URLDOC) {
-            await SET_ASYNC(`${longUrl}`,JSON.stringify(URLDOC))
+            await SET_ASYNC(`${longUrl}`,JSON.stringify(URLDOC),"EX",10)
             return res.status(201).send({ status: true, message: "ALready URL shorten(SET)", data: URLDOC })
+        }
+
+        let obj = {
+            method: "get",
+            url: longUrl
+        }
+
+        let urlFound = false;
+        await axios(obj)
+            .then((res) => {
+                if (res.status == 201 || res.status == 200) urlFound = true;
+            })
+            .catch((err) => { });
+        if (!urlFound) {
+            return res.status(400).send({ status: false, message: "Please provide valid LongUrl(RDOP)" })
         }
 
         const urlCode = ShortId.generate().toLowerCase();
@@ -92,7 +108,7 @@ const urlShortener = async function (req, res) {
 
         const urlData1 = await UrlModel.create(urlData);
         const saveData = ({ longUrl: urlData1.longUrl, shortUrl: urlData1.shortUrl, urlCode: urlData1.urlCode })
-
+        await SET_ASYNC(`${longUrl}`,JSON.stringify(saveData),"EX",10)
         return res.status(201).send({ status: true, message: "url shorten successfully", data: saveData });
 
     } catch (err) {
@@ -105,22 +121,25 @@ const urlShortener = async function (req, res) {
 const getUrl = async function (req, res) {
     try {
         const urlCode = req.params.urlCode
+        if (!ShortId.isValid(req.params.urlCode.trim())) {
+            return res.status(400).send({ status: false, message: "Please provide valid urlCode" })
+        }
         let cachedURLCode = await GET_ASYNC(`${req.params.urlCode}`)
         if (cachedURLCode) {
-            return res.status(200).redirect(cachedURLCode)
+            return res.status(200).redirect(JSON.parse (cachedURLCode).longUrl)
         } else {
             const cachedData = await UrlModel.findOne({ urlCode: urlCode })
             if (!cachedData) {
-                return res.status(404).send({ status: false, message: "URL Not Found" })
+                return res.status(404).send({ status: false, message: "Long URL Not Found" })
             }
-            await SET_ASYNC(`${req.params.urlCode}`, JSON.stringify(cachedData))
+            await SET_ASYNC(`${req.params.urlCode}`, JSON.stringify(cachedData), "EX",10)
             return res.status(302).redirect(cachedData.longUrl)
         }
     } catch (err) {
-        return res.status(500).send({ status: false, message: err.message }) 
-    
-}
+        return res.status(500).send({ status: false, message: err.message })   
     }
+}
+    
 
 //==================================== Exporting ==================================================//
 
